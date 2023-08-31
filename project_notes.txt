@@ -1,0 +1,18 @@
+1 - python manage.py migrate
+2 - When it comes to deploying Python web applications, a common architecture involves using a web server like Nginx to handle incoming requests, 
+	while the Python application itself runs on a separate server. In this architecture, the web server serves as a reverse proxy, 
+	forwarding requests to the Python application server and then returning the response back to the client.
+
+    The communication between the web server and the application server is handled by a protocol that specifies how the two servers should interact with each other.
+    In the case of Python web applications, this protocol is either WSGI (Web Server Gateway Interface) or ASGI (Asynchronous Server Gateway Interface), 
+    depending on whether the application uses synchronous or asynchronous programming.
+
+    ASGI unlike WSGIallows developers to write web applications that can handle multiple requests at once, without blocking the main thread.
+3 - python manage.py startapp leads
+4 - in settings, add app's name to INSTALLED_APP 
+5 - create a model class in models.py 
+6 - run "python manage.py makemigrations" this won't create database schema rather it will create python file that contains code that will create the database schema
+7 - we can create the schema using this command "python manage.py migrate "
+8 - create custom user class in the models.py in the app (we have to add it to the setting as follow "AUTH_USER_MODEL = "leads.User"")
+	if we do that we should delete original database becuase it already contains user model and files in migrations folder. 
+9- model manager and querysets
