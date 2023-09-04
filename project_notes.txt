@@ -15,4 +15,9 @@
 7 - we can create the schema using this command "python manage.py migrate "
 8 - create custom user class in the models.py in the app (we have to add it to the setting as follow "AUTH_USER_MODEL = "leads.User"")
 	if we do that we should delete original database becuase it already contains user model and files in migrations folder. 
-9- model manager and querysets
+9 - model manager and querysets
+10 - register models in admin.py file
+11 - add endpoint to views.py
+12 - add url for the endpoint in urls.py
+13 - there are two options to add html files :[add templates folder either to root dir or to app dir(leads)] but when add to root dir, you have to add the path to the settings
+14 - create form.py inside lead folder and create class LeadForm then pass an instance of it to view in context to html 
