@@ -20,4 +20,7 @@
 11 - add endpoint to views.py
 12 - add url for the endpoint in urls.py
 13 - there are two options to add html files :[add templates folder either to root dir or to app dir(leads)] but when add to root dir, you have to add the path to the settings
-14 - create form.py inside lead folder and create class LeadForm then pass an instance of it to view in context to html 
+14 - create form.py inside lead folder and create class LeadForm then pass an instance of it to view in context to html
+15 - create form from forms.ModelForm instead of forms.Form (https://sayari3.com/articles/5-difference-between-django-formsform-and-formsmodelform/)
+16 - add delete and upadate views 
+17 - edit links so that it follow the namespace and url name 
