@@ -1,10 +1,16 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-
+from django.db.models.signals import post_save
 # User = get_user_model()  not recommended
 
 class User(AbstractUser):
     pass  # no need to more than exist in AbstractUser class
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.user.username
 
 class Lead(models.Model):
     SOURCE_CHOICES = (
@@ -25,7 +31,14 @@ class Lead(models.Model):
         return f"{self.first_name} {self.last_name}"
     
 class Agent(models.Model):
-    user : User = models.OneToOneField("User", on_delete=models.CASCADE)
-    
+    user : User = models.OneToOneField(User, on_delete=models.CASCADE)
+    organization = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     def __str__(self):
         return self.user.email
+    
+def post_user_created_signal(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+
+# create a signal where whenever a User object created then the function post_user_created_signal excuted
+post_save.connect(post_user_created_signal, sender=User) 
