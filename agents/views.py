@@ -30,6 +30,7 @@ class AgentCreateView(OrganiserAndLoginRequiredMixin, generic.CreateView):
         user.is_agent = True
         user.is_organizer = False
         user.set_password(f"{random.randint(0, 1000000)}")
+        user.save()
         Agent.objects.create(
             user=user,
             organization=self.request.user.userprofile
@@ -40,7 +41,6 @@ class AgentCreateView(OrganiserAndLoginRequiredMixin, generic.CreateView):
             from_email="admin@gmail.com",
             recipient_list=[user.email]
         )
-        user.save()
         return super(AgentCreateView, self).form_valid(form)
 
 
