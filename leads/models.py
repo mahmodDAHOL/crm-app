@@ -30,6 +30,7 @@ class Lead(models.Model):
     source = models.CharField(choices=SOURCE_CHOICES, max_length=100)
     profile_picture = models.ImageField(blank=True, null=True)
     special_file = models.FileField(blank=True, null=True)
+    category = models.ForeignKey("Category",null=True, blank=True, on_delete=models.SET_NULL)
     
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
@@ -39,7 +40,15 @@ class Agent(models.Model):
     organization = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     def __str__(self):
         return self.user.email
+
+
+class Category(models.Model):
+    name = models.CharField(max_length=30)
+    organization = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     
+    def __str__(self):
+        return self.name
+
 def post_user_created_signal(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.create(user=instance)
