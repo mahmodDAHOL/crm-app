@@ -89,8 +89,8 @@
                 {{ lead.first_name }} {{ lead.last_name }}
               </h2>
               <p class="leading-relaxed text-base"></p>
-              <a href="{% url 'leads:lead-detail' lead.pk%}" class="mt-3 text-indigo-500 inline-flex items-center">
-                View this lead
+              <a href="{% url 'leads:assign-agent' lead.pk%}" class="mt-3 text-indigo-500 inline-flex items-center">
+                Assign an agent
                 <svg
                   fill="none"
                   stroke="currentColor"
