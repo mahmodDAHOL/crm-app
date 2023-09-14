@@ -30,7 +30,7 @@ class Lead(models.Model):
     source = models.CharField(choices=SOURCE_CHOICES, max_length=100)
     profile_picture = models.ImageField(blank=True, null=True)
     special_file = models.FileField(blank=True, null=True)
-    category = models.ForeignKey("Category",null=True, blank=True, on_delete=models.SET_NULL)
+    category = models.ForeignKey("Category",related_name="leads", null=True, blank=True, on_delete=models.SET_NULL)
     
     def __str__(self):
         return f"{self.first_name} {self.last_name}"

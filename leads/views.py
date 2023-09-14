@@ -1,4 +1,3 @@
-from typing import Any
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.mail import send_mail
 from django.shortcuts import redirect, render
@@ -6,8 +5,8 @@ from django.urls import reverse
 from django.views import generic
 
 from agents.mixins import OrganiserAndLoginRequiredMixin
-from leads.forms import (AssignAgentForm, CustomUserCreationForm, LeadForm,
-                         LeadModelForm)
+from leads.forms import (AssignAgentForm, CustomUserCreationForm,
+                         LeadCategoryUpdateForm, LeadModelForm)
 
 from .models import Agent, Category, Lead
 
@@ -163,3 +162,46 @@ class CategoryListView(LoginRequiredMixin, generic.ListView):
 
         return queryset
     
+
+    
+class CategoryDetailView(LoginRequiredMixin, generic.DetailView):
+    template_name = "leads/category_detail.html"
+    context_object_name = "category"
+
+    def get_context_data(self, **kwargs):
+        context = super(CategoryDetailView, self).get_context_data(**kwargs)
+
+        leads = self.get_object().leads.all()  # here leads have to be a "related_name" attr in ForeignKey class 
+        context.update({
+            "leads": leads
+        })
+        return context
+
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_organizer:
+            queryset = Category.objects.filter(organization=user.userprofile)
+        else:
+            queryset = Category.objects.filter(organization=user.agent.organization)
+
+        return queryset
+    
+class LeadUpadataCategoryView(LoginRequiredMixin, generic.UpdateView):
+    template_name = "leads/lead_categoty_update.html"
+    form_class = LeadCategoryUpdateForm
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_organizer:
+            queryset = Lead.objects.filter(organization=user.userprofile)
+        else:
+            queryset = Lead.objects.filter(organization=user.agent.organization)
+            queryset = queryset.filter(agent__user=user)
+
+        return queryset
+
+
+    def get_success_url(self) -> str:
+        return reverse("leads:lead-detail", kwargs={"pk":self.get_object().id})
+

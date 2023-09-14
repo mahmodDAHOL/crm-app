@@ -22,12 +22,6 @@ class LeadModelForm(forms.ModelForm):
         )
 
 
-class LeadForm(forms.Form):
-    first_name = forms.CharField()
-    last_name = forms.CharField()
-    age = forms.IntegerField(min_value=0)
-
-
 class CustomUserCreationForm(UserCreationForm):
     class Meta:
         model = User
@@ -43,3 +37,8 @@ class AssignAgentForm(forms.Form):
         agents = Agent.objects.filter(organization=request.user.userprofile)
         super(AssignAgentForm, self).__init__(*args, **kwargs)
         self.fields["agent"].queryset = agents
+        
+class LeadCategoryUpdateForm(forms.ModelForm):
+    class Meta:
+        model = Lead
+        fields = ('category',)
