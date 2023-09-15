@@ -2,17 +2,18 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth.views import (LoginView, LogoutView,
-                                       PasswordResetDoneView,
-                                       PasswordResetView,
+                                       PasswordResetCompleteView,
                                        PasswordResetConfirmView,
-                                       PasswordResetCompleteView)
+                                       PasswordResetDoneView,
+                                       PasswordResetView)
 from django.urls import include, path
 
-from leads.views import LandingPageView, SignupView, landing_page
+from leads.views import DashboardView, LandingPageView, SignupView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", LandingPageView.as_view(), name="landing-page"),
+    path('dashboard/', DashboardView.as_view(), name='dashboard'),
     path("leads/", include("leads.urls", namespace="leads")),
     path("agents/", include("agents.urls", namespace="agents")),
     path("login/", LoginView.as_view(), name="login"),

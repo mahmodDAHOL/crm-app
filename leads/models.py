@@ -1,6 +1,7 @@
-from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.db import models
 from django.db.models.signals import post_save
+
 # User = get_user_model()  not recommended
 
 class User(AbstractUser):
@@ -16,25 +17,37 @@ class UserProfile(models.Model):
         return self.user.username
 
 class Lead(models.Model):
-    SOURCE_CHOICES = (
-        ("YouTube", "YouTube"),
-        ("Google", "Google"),
-        ("Newsletter", "Newsletter"),
-    )
+
     first_name = models.CharField(max_length=20)
     last_name = models.CharField(max_length=20)
-    agent = models.ForeignKey("Agent",null=True, blank=True, on_delete=models.SET_NULL)
-    organization = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     age = models.IntegerField(default=0)
-    phoned = models.BooleanField(default=False)
-    source = models.CharField(choices=SOURCE_CHOICES, max_length=100)
-    profile_picture = models.ImageField(blank=True, null=True)
-    special_file = models.FileField(blank=True, null=True)
+    organization = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
+    agent = models.ForeignKey("Agent",null=True, blank=True, on_delete=models.SET_NULL)
     category = models.ForeignKey("Category",related_name="leads", null=True, blank=True, on_delete=models.SET_NULL)
+    description = models.TextField()
+    date_added = models.DateTimeField(auto_now_add=True)
+    phone_number = models.CharField(max_length=20)
+    email = models.EmailField()
+    profile_picture = models.ImageField(null=True, blank=True, upload_to="profile_pictures/")
+    converted_date = models.DateTimeField(null=True, blank=True)
     
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
-    
+
+
+def handle_upload_follow_ups(instance, filename):
+    return f"lead_followups/lead_{instance.lead.pk}/{filename}"
+
+
+class FollowUp(models.Model):
+    lead = models.ForeignKey(Lead, related_name="followups", on_delete=models.CASCADE)
+    date_added = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True, null=True)
+    file = models.FileField(null=True, blank=True, upload_to=handle_upload_follow_ups)
+
+    def __str__(self):
+        return f"{self.lead.first_name} {self.lead.last_name}"
+
 class Agent(models.Model):
     user : User = models.OneToOneField(User, on_delete=models.CASCADE)
     organization = models.ForeignKey(UserProfile, on_delete=models.CASCADE)

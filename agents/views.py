@@ -1,15 +1,16 @@
 import random
+
 from django.core.mail import send_mail
 from django.urls import reverse
 from django.views import generic
 
 from agents.forms import AgentModelForm
-from leads.models import Agent, UserProfile
+from leads.models import Agent
 
-from .mixins import OrganiserAndLoginRequiredMixin
+from .mixins import OrganizerAndLoginRequiredMixin
 
 
-class AgentListView(OrganiserAndLoginRequiredMixin, generic.ListView):
+class AgentListView(OrganizerAndLoginRequiredMixin, generic.ListView):
     template_name = "agents/agent_list.html"
     context_object_name = "agents"
 
@@ -18,7 +19,7 @@ class AgentListView(OrganiserAndLoginRequiredMixin, generic.ListView):
         return Agent.objects.filter(organization=organization)
 
 
-class AgentCreateView(OrganiserAndLoginRequiredMixin, generic.CreateView):
+class AgentCreateView(OrganizerAndLoginRequiredMixin, generic.CreateView):
     template_name = "agents/agent_create.html"
     form_class = AgentModelForm
 
@@ -38,13 +39,13 @@ class AgentCreateView(OrganiserAndLoginRequiredMixin, generic.CreateView):
         send_mail(
             subject="You are invinted to be an agent",
             message="You added as an agent on DJCRM, please come login to start working.",
-            from_email="admin@gmail.com",
+            from_email=self.request.user.email,
             recipient_list=[user.email]
         )
         return super(AgentCreateView, self).form_valid(form)
 
 
-class AgentDetailView(OrganiserAndLoginRequiredMixin, generic.DetailView):
+class AgentDetailView(OrganizerAndLoginRequiredMixin, generic.DetailView):
     template_name = "agents/agent_detail.html"
     context_object_name = "agent"
 
@@ -55,14 +56,16 @@ class AgentDetailView(OrganiserAndLoginRequiredMixin, generic.DetailView):
 
 class AgentUpdateView(generic.UpdateView):
     template_name = "agents/agent_update.html"
-    queryset = Agent.objects.all()
     form_class = AgentModelForm
 
-    def get_success_url(self) -> str:
+    def get_success_url(self):
         return reverse("agents:agent-list")
 
+    def get_queryset(self):
+        organization = self.request.user.userprofile
+        return Agent.objects.filter(organization=organization)
 
-class AgentDeleteView(OrganiserAndLoginRequiredMixin, generic.DeleteView):
+class AgentDeleteView(OrganizerAndLoginRequiredMixin, generic.DeleteView):
     template_name = "agents/agent_delete.html"
     context_object_name = "agent"
 

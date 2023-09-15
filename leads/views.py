@@ -1,14 +1,18 @@
+import datetime
+
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.mail import send_mail
-from django.shortcuts import redirect, render
+from django.contrib import messages
+from django.shortcuts import redirect
 from django.urls import reverse
 from django.views import generic
 
-from agents.mixins import OrganiserAndLoginRequiredMixin
-from leads.forms import (AssignAgentForm, CustomUserCreationForm,
-                         LeadCategoryUpdateForm, LeadModelForm)
+from agents.mixins import OrganizerAndLoginRequiredMixin
+from leads.forms import (AssignAgentForm, CategoryModelForm,
+                         CustomUserCreationForm, FollowUpModelForm, LeadCategoryUpdateForm,
+                         LeadModelForm)
 
-from .models import Agent, Category, Lead
+from .models import Category, FollowUp, Lead
 
 
 class SignupView(generic.CreateView):
@@ -19,13 +23,47 @@ class SignupView(generic.CreateView):
         return reverse("login")
 
 
-class LandingPageView(LoginRequiredMixin, generic.TemplateView):
+class LandingPageView(generic.TemplateView):
     template_name = "landing.html"
 
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect("dashboard")
+        return super().dispatch(request, *args, **kwargs)
 
-def landing_page(request):
-    return render(request, "landing.html")
+class DashboardView(OrganizerAndLoginRequiredMixin, generic.TemplateView):
+    template_name = "dashboard.html"
 
+    def get_context_data(self, **kwargs):
+        context = super(DashboardView, self).get_context_data(**kwargs)
+
+        user = self.request.user
+
+        # How many leads we have in total
+        total_lead_count = Lead.objects.filter(organization=user.userprofile).count()
+
+        # How many new leads in the last 30 days
+        thirty_days_ago = datetime.date.today() - datetime.timedelta(days=30)
+
+        total_in_past30 = Lead.objects.filter(
+            organization=user.userprofile,
+            date_added__gte=thirty_days_ago
+        ).count()
+
+        # How many converted leads in the last 30 days
+        converted_category = Category.objects.get(name="converted")
+        converted_in_past30 = Lead.objects.filter(
+            organization=user.userprofile,
+            category=converted_category,
+            converted_date__gte=thirty_days_ago
+        ).count()
+        context.update({
+            "total_lead_count": total_lead_count,
+            "total_in_past30": total_in_past30,
+            "converted_in_past30": converted_in_past30
+        })
+        return context
+        
 
 class LeadListView(LoginRequiredMixin, generic.ListView):
     template_name = "leads/lead_list.html"
@@ -55,7 +93,7 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
 
 
 
-class LeadDetailView(OrganiserAndLoginRequiredMixin, generic.DetailView):
+class LeadDetailView(LoginRequiredMixin, generic.DetailView):
     template_name = "leads/lead_detail.html"
     context_object_name = "lead"
 
@@ -71,7 +109,7 @@ class LeadDetailView(OrganiserAndLoginRequiredMixin, generic.DetailView):
 
 
 
-class LeadCreateView(OrganiserAndLoginRequiredMixin, generic.CreateView):
+class LeadCreateView(OrganizerAndLoginRequiredMixin, generic.CreateView):
     template_name = "leads/lead_create.html"
     form_class = LeadModelForm
 
@@ -80,7 +118,7 @@ class LeadCreateView(OrganiserAndLoginRequiredMixin, generic.CreateView):
 
     def form_valid(self, form):
         lead = form.save(commit=False)
-        lead.organisation = self.request.user.userprofile
+        lead.organization = self.request.user.userprofile
         lead.save()
         send_mail(
             subject="a lead has been created",
@@ -88,11 +126,12 @@ class LeadCreateView(OrganiserAndLoginRequiredMixin, generic.CreateView):
             from_email="mahmod@aldahool.com",
             recipient_list=["ali@ali.com"],
         )
+        messages.success(self.request, "You have successfully created a lead")
         return super(LeadCreateView, self).form_valid(form)
 
 
 
-class LeadUpdateView(OrganiserAndLoginRequiredMixin, generic.UpdateView):
+class LeadUpdateView(OrganizerAndLoginRequiredMixin, generic.UpdateView):
     template_name = "leads/lead_update.html"
     form_class = LeadModelForm
 
@@ -103,9 +142,12 @@ class LeadUpdateView(OrganiserAndLoginRequiredMixin, generic.UpdateView):
     def get_success_url(self) -> str:
         return reverse("leads:lead-list")
 
+    def form_valid(self, form):
+        form.save()
+        messages.info(self.request, "You have successfully updated this lead")
+        return super(LeadUpdateView, self).form_valid(form)
 
-
-class LeadDeleteView(OrganiserAndLoginRequiredMixin, generic.DeleteView):
+class LeadDeleteView(OrganizerAndLoginRequiredMixin, generic.DeleteView):
     template_name = "leads/lead_delete.html"
 
     def get_queryset(self):
@@ -115,7 +157,7 @@ class LeadDeleteView(OrganiserAndLoginRequiredMixin, generic.DeleteView):
     def get_success_url(self) -> str:
         return reverse("leads:lead-list")
 
-class AssignAgentView(OrganiserAndLoginRequiredMixin, generic.FormView):
+class AssignAgentView(OrganizerAndLoginRequiredMixin, generic.FormView):
     template_name = "leads/assign_agent.html"
     form_class = AssignAgentForm
     
@@ -186,8 +228,64 @@ class CategoryDetailView(LoginRequiredMixin, generic.DetailView):
             queryset = Category.objects.filter(organization=user.agent.organization)
 
         return queryset
+
+
+class CategoryCreateView(OrganizerAndLoginRequiredMixin, generic.CreateView):
+    template_name = "leads/category_create.html"
+    form_class = CategoryModelForm
+
+    def get_success_url(self):
+        return reverse("leads:category-list")
+
+    def form_valid(self, form):
+        category = form.save(commit=False)
+        category.organization = self.request.user.userprofile
+        category.save()
+        return super(CategoryCreateView, self).form_valid(form)
+
+
+class CategoryUpdateView(OrganizerAndLoginRequiredMixin, generic.UpdateView):
+    template_name = "leads/category_update.html"
+    form_class = CategoryModelForm
+
+    def get_success_url(self):
+        return reverse("leads:category-list")
+
+    def get_queryset(self):
+        user = self.request.user
+        # initial queryset of leads for the entire organization
+        if user.is_organizer:
+            queryset = Category.objects.filter(
+                organization=user.userprofile
+            )
+        else:
+            queryset = Category.objects.filter(
+                organization=user.agent.organization
+            )
+        return queryset
     
-class LeadUpadataCategoryView(LoginRequiredMixin, generic.UpdateView):
+
+class CategoryDeleteView(OrganizerAndLoginRequiredMixin, generic.DeleteView):
+    template_name = "leads/category_delete.html"
+
+    def get_success_url(self):
+        return reverse("leads:category-list")
+
+    def get_queryset(self):
+        user = self.request.user
+        # initial queryset of leads for the entire organization
+        if user.is_organizer:
+            queryset = Category.objects.filter(
+                organization=user.userprofile
+            )
+        else:
+            queryset = Category.objects.filter(
+                organization=user.agent.organization
+            )
+        return queryset
+
+
+class LeadCategoryUpdateView(LoginRequiredMixin, generic.UpdateView):
     template_name = "leads/lead_categoty_update.html"
     form_class = LeadCategoryUpdateForm
 
@@ -205,3 +303,75 @@ class LeadUpadataCategoryView(LoginRequiredMixin, generic.UpdateView):
     def get_success_url(self) -> str:
         return reverse("leads:lead-detail", kwargs={"pk":self.get_object().id})
 
+    def form_valid(self, form):
+        lead_before_update = self.get_object()
+        instance = form.save(commit=False)
+        converted_category = Category.objects.get(name="converted")
+        if form.cleaned_data["category"] == converted_category:
+            # update the date at which this lead was converted
+            if lead_before_update.category != converted_category:
+                # this lead has now been converted
+                instance.converted_date = datetime.datetime.now()
+        instance.save()
+        return super(LeadCategoryUpdateView, self).form_valid(form)
+
+
+
+class FollowUpCreateView(LoginRequiredMixin, generic.CreateView):
+    template_name = "leads/followup_create.html"
+    form_class = FollowUpModelForm
+
+    def get_success_url(self):
+        return reverse("leads:lead-detail", kwargs={"pk": self.kwargs["pk"]})
+
+    def get_context_data(self, **kwargs):
+        context = super(FollowUpCreateView, self).get_context_data(**kwargs)
+        context.update({
+            "lead": Lead.objects.get(pk=self.kwargs["pk"])
+        })
+        return context
+
+    def form_valid(self, form):
+        lead = Lead.objects.get(pk=self.kwargs["pk"])
+        followup = form.save(commit=False)
+        followup.lead = lead
+        followup.save()
+        return super(FollowUpCreateView, self).form_valid(form)
+
+
+class FollowUpUpdateView(LoginRequiredMixin, generic.UpdateView):
+    template_name = "leads/followup_update.html"
+    form_class = FollowUpModelForm
+
+    def get_queryset(self):
+        user = self.request.user
+        # initial queryset of leads for the entire organization
+        if user.is_organizer:
+            queryset = FollowUp.objects.filter(lead__organization=user.userprofile)
+        else:
+            queryset = FollowUp.objects.filter(lead__organization=user.agent.organization)
+            # filter for the agent that is logged in
+            queryset = queryset.filter(lead__agent__user=user)
+        return queryset
+
+    def get_success_url(self):
+        return reverse("leads:lead-detail", kwargs={"pk": self.get_object().lead.id})
+
+
+class FollowUpDeleteView(OrganizerAndLoginRequiredMixin, generic.DeleteView):
+    template_name = "leads/followup_delete.html"
+
+    def get_success_url(self):
+        followup = FollowUp.objects.get(id=self.kwargs["pk"])
+        return reverse("leads:lead-detail", kwargs={"pk": followup.lead.pk})
+
+    def get_queryset(self):
+        user = self.request.user
+        # initial queryset of leads for the entire organization
+        if user.is_organizer:
+            queryset = FollowUp.objects.filter(lead__organization=user.userprofile)
+        else:
+            queryset = FollowUp.objects.filter(lead__organization=user.agent.organization)
+            # filter for the agent that is logged in
+            queryset = queryset.filter(lead__agent__user=user)
+        return queryset

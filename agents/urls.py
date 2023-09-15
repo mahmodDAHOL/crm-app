@@ -1,6 +1,7 @@
 from django.urls import path
 
-from agents.views import AgentCreateView, AgentDeleteView, AgentDetailView, AgentListView, AgentUpdateView
+from agents.views import (AgentCreateView, AgentDeleteView, AgentDetailView,
+                          AgentListView, AgentUpdateView)
 
 app_name = "agents"
 
